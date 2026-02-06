@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Data Quality Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://unpkg.com/lucide@0.473.0/dist/umd/lucide.min.js"></script>
+  </head>
+  <body>
+    <div class="page">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">AI-powered Data Quality Insights</p>
+          <h1>Data Quality Dashboard</h1>
+          <p class="subtext">
+            Executive-ready report powered by standardized data validation with
+            AI insights
+          </p>
+        </div>
+        <div class="hero-actions">
+          <a class="theme-toggle" href="../index.html">
+            <span class="theme-icon"><i data-lucide="arrow-left"></i></span>
+            Back to App
+          </a>
+          <button class="theme-toggle" id="download-trigger" type="button">
+            <span class="theme-icon"><i data-lucide="download"></i></span>
+            Download
+          </button>
+          <button
+            class="theme-toggle"
+            id="theme-toggle"
+            type="button"
+            aria-label="Toggle theme"
+          >
+            <span class="theme-icon" data-theme-icon="sun"
+              ><i data-lucide="sun"></i
+            ></span>
+            <span class="theme-icon" data-theme-icon="moon"
+              ><i data-lucide="moon"></i
+            ></span>
+          </button>
+        </div>
+      </header>
+
+      <section class="cards">
+        <div class="card" id="kpi-total" data-icon="database"></div>
+        <div class="card" id="kpi-ok" data-icon="check-circle-2"></div>
+        <div class="card" id="kpi-review" data-icon="alert-triangle"></div>
+        <div class="card" id="kpi-score" data-icon="gauge"></div>
+        <div class="card" id="kpi-issue-rate" data-icon="activity"></div>
+      </section>
+
+      <section class="layout" id="layout">
+        <div class="grid" id="grid">
+          <div class="panel">
+            <div class="panel-header">
+              <span class="panel-icon"><i data-lucide="bar-chart-3"></i></span>
+              <div class="panel-text">
+                <h2>Status Distribution</h2>
+                <span class="panel-meta">Quality readiness</span>
+              </div>
+              <button
+                class="chart-expand"
+                type="button"
+                data-chart-target="chart-status"
+                aria-label="Fullscreen Status Distribution"
+              >
+                <img src="../assets/extend.png" alt="Fullscreen" />
+              </button>
+            </div>
+            <div id="chart-status" class="chart"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-header">
+              <span class="panel-icon"><i data-lucide="gauge"></i></span>
+              <div class="panel-text">
+                <h2>Quality Score</h2>
+                <span class="panel-meta">Composite readiness</span>
+              </div>
+            </div>
+            <div id="chart-quality-score" class="chart"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-header">
+              <span class="panel-icon"
+                ><i data-lucide="alert-octagon"></i
+              ></span>
+              <div class="panel-text">
+                <h2>Top Issues</h2>
+                <span class="panel-meta">Critical drivers</span>
+              </div>
+              <button
+                class="chart-expand"
+                type="button"
+                data-chart-target="chart-issues"
+                aria-label="Fullscreen Top Issues"
+              >
+                <img src="../assets/extend.png" alt="Fullscreen" />
+              </button>
+            </div>
+            <div id="chart-issues" class="chart"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-header">
+              <span class="panel-icon"><i data-lucide="flag"></i></span>
+              <div class="panel-text">
+                <h2>Issue Spotlight</h2>
+                <span class="panel-meta">Top remediation targets</span>
+              </div>
+            </div>
+            <div id="issue-spotlight" class="spotlight-min"></div>
+          </div>
+          <div class="panel ai-panel" id="ai-panel-1">
+            <div class="panel-header">
+              <span class="panel-icon"><i data-lucide="sparkles"></i></span>
+              <div class="panel-text">
+                <h2>AI Chart</h2>
+                <span class="panel-meta">AI-selected</span>
+              </div>
+              <button
+                class="chart-expand"
+                type="button"
+                data-chart-target="ai-chart-1"
+                aria-label="Fullscreen AI Chart"
+              >
+                <img src="../assets/extend.png" alt="Fullscreen" />
+              </button>
+            </div>
+            <div id="ai-chart-1" class="chart"></div>
+          </div>
+          <div class="panel ai-panel" id="ai-panel-2">
+            <div class="panel-header">
+              <span class="panel-icon"><i data-lucide="sparkles"></i></span>
+              <div class="panel-text">
+                <h2>AI Chart</h2>
+                <span class="panel-meta">AI-selected</span>
+              </div>
+              <button
+                class="chart-expand"
+                type="button"
+                data-chart-target="ai-chart-2"
+                aria-label="Fullscreen AI Chart"
+              >
+                <img src="../assets/extend.png" alt="Fullscreen" />
+              </button>
+            </div>
+            <div id="ai-chart-2" class="chart"></div>
+          </div>
+          <div class="panel ai-panel" id="ai-panel-3">
+            <div class="panel-header">
+              <span class="panel-icon"><i data-lucide="sparkles"></i></span>
+              <div class="panel-text">
+                <h2>AI Chart</h2>
+                <span class="panel-meta">AI-selected</span>
+              </div>
+              <button
+                class="chart-expand"
+                type="button"
+                data-chart-target="ai-chart-3"
+                aria-label="Fullscreen AI Chart"
+              >
+                <img src="../assets/extend.png" alt="Fullscreen" />
+              </button>
+            </div>
+            <div id="ai-chart-3" class="chart"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-header">
+              <span class="panel-icon"><i data-lucide="pie-chart"></i></span>
+              <div class="panel-text">
+                <h2>Status Mix</h2>
+                <span class="panel-meta">Share of records</span>
+              </div>
+              <button
+                class="chart-expand"
+                type="button"
+                data-chart-target="chart-status-pie"
+                aria-label="Fullscreen Status Mix"
+              >
+                <img src="../assets/extend.png" alt="Fullscreen" />
+              </button>
+            </div>
+            <div id="chart-status-pie" class="chart"></div>
+          </div>
+          <div class="panel wide-panel">
+            <div class="panel-header">
+              <span class="panel-icon"><i data-lucide="target"></i></span>
+              <div class="panel-text">
+                <h2>Completeness Radar</h2>
+                <span class="panel-meta">Mandatory field health</span>
+              </div>
+              <button
+                class="chart-expand"
+                type="button"
+                data-chart-target="chart-completeness-radar"
+                aria-label="Fullscreen Completeness Radar"
+              >
+                <img src="../assets/extend.png" alt="Fullscreen" />
+              </button>
+            </div>
+            <div id="chart-completeness-radar" class="chart"></div>
+          </div>
+          <div class="panel wide-panel">
+            <div class="panel-header">
+              <span class="panel-icon"
+                ><i data-lucide="clipboard-check"></i
+              ></span>
+              <div class="panel-text">
+                <h2>Operational Summary</h2>
+                <span class="panel-meta">From data_quality_insights.txt</span>
+              </div>
+            </div>
+            <div id="dq-summary" class="dq-grid"></div>
+          </div>
+        </div>
+
+        <div
+          class="resizer"
+          id="resizer"
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Resize insights panel"
+        ></div>
+
+        <section class="panel insight-panel" id="insights-panel">
+          <div class="panel-header">
+            <span class="panel-icon"><i data-lucide="sparkles"></i></span>
+            <div class="panel-text">
+              <h2>AI Insights</h2>
+              <span class="panel-meta">Board-ready narrative</span>
+              <span
+                class="panel-meta report-timestamp"
+                id="report-timestamp"
+              ></span>
+            </div>
+          </div>
+          <div id="ai-insights"></div>
+        </section>
+      </section>
+    </div>
+
+    <div class="modal" id="download-modal" aria-hidden="true">
+      <div class="modal-card">
+        <div class="modal-header">
+          <div>
+            <h3>Downloads</h3>
+            <span class="panel-meta">Generated files</span>
+          </div>
+          <button class="modal-close" id="close-download-modal" type="button">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="download-modal-list" id="download-modal-list"></div>
+        </div>
+        <div class="modal-actions">
+          <button
+            class="modal-download-all"
+            id="download-modal-all"
+            type="button"
+          >
+            Download All
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal chart-modal" id="chart-modal" aria-hidden="true">
+      <div class="modal-card chart-modal-card">
+        <div class="modal-header">
+          <div>
+            <h3 id="chart-modal-title">Chart</h3>
+            <span class="panel-meta">Fullscreen view</span>
+          </div>
+          <button
+            class="modal-close modal-icon"
+            id="close-chart-modal"
+            type="button"
+            aria-label="Close"
+          >
+            <img src="../assets/minimize.png" alt="Close" />
+          </button>
+        </div>
+        <div class="modal-body">
+          <div id="chart-modal-canvas" class="chart chart-modal-canvas"></div>
+        </div>
+      </div>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
