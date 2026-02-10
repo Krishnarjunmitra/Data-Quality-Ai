@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>METADATA driven data quality framework</title>
+    <link rel="icon" type="image/x-icon" href="./assets/Web-logo.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -20,13 +21,23 @@
           <p class="eyebrow">METADATA driven data quality generator</p>
           <h1>AI-driven Data Quality Framework</h1>
           <p class="subtext">
-            Frontend-only experience for metadata definition, standardization rules, and data quality insights.
+            Frontend-only experience for metadata definition, standardization
+            rules, and data quality insights.
           </p>
         </div>
         <div class="hero-actions">
-          <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Toggle theme">
-            <span class="theme-icon" data-theme-icon="sun"><i data-lucide="sun"></i></span>
-            <span class="theme-icon" data-theme-icon="moon"><i data-lucide="moon"></i></span>
+          <button
+            class="theme-toggle"
+            id="theme-toggle"
+            type="button"
+            aria-label="Toggle theme"
+          >
+            <span class="theme-icon" data-theme-icon="sun"
+              ><i data-lucide="sun"></i
+            ></span>
+            <span class="theme-icon" data-theme-icon="moon"
+              ><i data-lucide="moon"></i
+            ></span>
           </button>
         </div>
       </header>
@@ -47,9 +58,19 @@
             </div>
           </div>
           <div class="row">
-            <button id="process-btn" class="primary" type="button" disabled>Start AI Pipeline</button>
-            <button id="view-data" class="ghost" type="button" disabled>View Standardized Data</button>
-            <button id="reset-btn" class="ghost is-hidden reset-btn" type="button">Reset</button>
+            <button id="process-btn" class="primary" type="button" disabled>
+              Start AI Pipeline
+            </button>
+            <button id="view-data" class="ghost" type="button" disabled>
+              View Standardized Data
+            </button>
+            <button
+              id="reset-btn"
+              class="ghost is-hidden reset-btn"
+              type="button"
+            >
+              Reset
+            </button>
           </div>
           <div class="hint" id="file-info">No file selected.</div>
         </div>
@@ -58,20 +79,32 @@
           <div class="panel-header">
             <div>
               <h2>AI Connection</h2>
-              <span class="panel-meta">Hugging Face router (local browser memory)</span>
+              <span class="panel-meta"
+                >Hugging Face router (local browser memory)</span
+              >
             </div>
           </div>
           <div class="form">
             <label>
               HF Token
-              <input id="hf-token" type="password" placeholder="Paste your HuggingFace token" />
+              <input
+                id="hf-token"
+                type="password"
+                placeholder="Paste your HuggingFace token"
+              />
             </label>
             <label>
               Model ID
-              <input id="hf-model" type="text" placeholder="meta-llama/Meta-Llama-3-8B-Instruct" />
+              <input
+                id="hf-model"
+                type="text"
+                placeholder="meta-llama/Meta-Llama-3-8B-Instruct"
+              />
             </label>
             <div class="row">
-              <button id="save-settings" class="ghost" type="button">Save Settings</button>
+              <button id="save-settings" class="ghost" type="button">
+                Save Settings
+              </button>
               <span class="hint">Token stored in local storage only.</span>
             </div>
           </div>
@@ -85,7 +118,14 @@
               <h2>Pipeline Progress</h2>
               <span class="panel-meta">Live generation status</span>
             </div>
-            <button id="open-dashboard" class="primary is-hidden" type="button" disabled>Open Dashboard</button>
+            <button
+              id="open-dashboard"
+              class="primary is-hidden"
+              type="button"
+              disabled
+            >
+              Open Dashboard
+            </button>
           </div>
           <div class="steps" id="steps"></div>
         </div>
@@ -96,7 +136,9 @@
               <h2>Generated Files</h2>
               <span class="panel-meta">Download once each file is ready</span>
             </div>
-            <button id="download-all" class="ghost" type="button" disabled>Download All Files</button>
+            <button id="download-all" class="ghost" type="button" disabled>
+              Download All Files
+            </button>
           </div>
           <div class="files" id="files"></div>
         </div>
@@ -106,11 +148,41 @@
     <div class="modal" id="data-modal" aria-hidden="true">
       <div class="modal-card">
         <div class="modal-header">
-          <h3 style="padding-bottom:0.5%; display:flex; align-items: center; gap: 8px; font-size: 1.35em; font-weight: 700; margin: 0; margin-bottom: 0.5%; border-bottom: 1px solid var(--border);">
-            <i data-lucide="database" style="width: 1em; height: 1em; display: inline-flex; align-items: center; justify-content: center; margin: 0; padding: 0; border: none; background: none;"></i>
+          <h3
+            style="
+              padding-bottom: 0.5%;
+              display: flex;
+              align-items: center;
+              gap: 8px;
+              font-size: 1.35em;
+              font-weight: 700;
+              margin: 0;
+              margin-bottom: 0.5%;
+              border-bottom: 1px solid var(--border);
+            "
+          >
+            <i
+              data-lucide="database"
+              style="
+                width: 1em;
+                height: 1em;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                margin: 0;
+                padding: 0;
+                border: none;
+                background: none;
+              "
+            ></i>
             Standardized Data Preview
           </h3>
-          <button id="close-modal" class="ghost" type="button" aria-label="Close">
+          <button
+            id="close-modal"
+            class="ghost"
+            type="button"
+            aria-label="Close"
+          >
             <i data-lucide="x"></i>
           </button>
         </div>
