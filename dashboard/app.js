@@ -1,3 +1,5 @@
+// dashboard/app.js
+
 const storeKey = "mdq_generated_files";
 
 const getFiles = () => {
@@ -5,6 +7,31 @@ const getFiles = () => {
     return JSON.parse(localStorage.getItem(storeKey)) || {};
   } catch (err) {
     return {};
+  }
+};
+
+// If a selected file is set in sessionStorage, filter files for dashboard view
+const loadSelectedFileData = () => {
+  // Prefer localStorage selection (set when user opens dashboard in a new tab),
+  // fall back to sessionStorage if present.
+  const selectedFile = (localStorage.getItem("mdq_selected_dashboard_file") || sessionStorage.getItem("mdq_selected_dashboard_file"));
+  const files = getFiles();
+
+  if (selectedFile) {
+    const filteredFiles = {};
+    Object.keys(files).forEach((key) => {
+      if (key.startsWith(`${selectedFile}_`)) {
+        // key without the base prefix
+        filteredFiles[key.replace(`${selectedFile}_`, "")] = files[key];
+      }
+    });
+
+    if (Object.keys(filteredFiles).length > 0) {
+      // store original files to restore later in sessionStorage
+      try { sessionStorage.setItem("mdq_original_files", JSON.stringify(files)); } catch (e) {}
+      // override localStorage for this session view
+      try { localStorage.setItem(storeKey, JSON.stringify(filteredFiles)); } catch (e) {}
+    }
   }
 };
 
@@ -732,11 +759,22 @@ const initTheme = () => {
 };
 
 initTheme();
+loadSelectedFileData();
 renderAll();
 setupThemeToggle();
 setupResizer();
 setupDownloadModal();
 setupChartLightbox();
+
+// Restore original files and clean session when leaving dashboard
+window.addEventListener('beforeunload', () => {
+  const originalFiles = sessionStorage.getItem("mdq_original_files");
+  if (originalFiles) {
+    localStorage.setItem(storeKey, originalFiles);
+    sessionStorage.removeItem("mdq_original_files");
+  }
+  sessionStorage.removeItem("mdq_selected_dashboard_file");
+});
 
 if (window.lucide && typeof window.lucide.createIcons === "function") {
   window.lucide.createIcons();

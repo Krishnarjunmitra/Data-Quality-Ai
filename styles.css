@@ -5,7 +5,7 @@
     --bg: #f4f5f7;
     --surface: #ffffff;
     --surface-2: #f0f1f4;
-    --text: #0f172a;
+    --text: #343c4e;
     --text-strong: #0b1220;
     --text-soft: #1f2937;
     --muted: #334155;
@@ -14,6 +14,9 @@
 
     --accent: #9f7aea;
     --accent-2: #60a5fa;
+
+    --cyan:#007cdb;
+    --cyan-2:#00e5c6;
 }
 
 [data-theme="dark"] {
@@ -26,8 +29,12 @@
     --muted: #a0a6b2;
     --border: rgba(255, 255, 255, 0.08);
     --shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+
     --accent: #7c3aed;
     --accent-2: #2563eb;
+
+    --cyan:#1a9cff;
+    --cyan-2:#00e2c4;
 }
 
 body {
@@ -47,12 +54,12 @@ body {
 }
 
 *::-webkit-scrollbar-thumb {
-    background-color: #0091ff;
+    background-color: var(--cyan);
     border-radius: 10px;
 }
 
 *::-webkit-scrollbar-thumb:hover {
-    background-color: #00ffdd;
+    background-color: var(--cyan-2);
 }
 
 .page {
@@ -102,6 +109,93 @@ body {
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: 18px;
     margin: 24px 0;
+}
+
+
+.grid.two-cols {
+    grid-template-columns: 1fr 1fr;
+    align-items: stretch;
+}
+
+.col-right {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    height: 100%;
+}
+
+.col-right .panel {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.services-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 4px;
+}
+
+.service-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+
+
+    border: none;
+
+    border-radius: 10px;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.service-item input[type="checkbox"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 6px;
+    border: 1.5px solid var(--border);
+    background: var(--surface);
+    display: inline-block;
+    position: relative;
+    cursor: pointer;
+    transition: all 0.14s ease;
+    box-shadow: 0 1px 0 rgba(16,24,40,0.03) inset;
+}
+
+.service-item input[type="checkbox"]:hover {
+    border-color: rgba(159,122,234,0.7);
+}
+
+.service-item input[type="checkbox"]:focus {
+    outline: none;
+    box-shadow: 0 0 0 4px rgba(159,122,234,0.12);
+}
+
+.service-item input[type="checkbox"]::after {
+    content: "";
+    position: absolute;
+    left: 5px;
+    top: 2px;
+    width: 6px;
+    height: 10px;
+    border: solid #fff;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg) scale(0);
+    opacity: 0;
+    transition: transform 0.14s ease, opacity 0.14s ease;
+}
+
+.service-item input[type="checkbox"]:checked {
+    background: linear-gradient(120deg, var(--accent), var(--accent-2));
+    border-color: transparent;
+}
+
+.service-item input[type="checkbox"]:checked::after {
+    transform: rotate(45deg) scale(1);
+    opacity: 1;
 }
 
 .panel {
@@ -268,7 +362,7 @@ body {
 
 .hint {
     color: var(--muted);
-    font-size: 13px;
+    font-size: 15px;
 }
 
 .form label {
@@ -376,6 +470,11 @@ body {
     border-bottom-color: transparent;
 }
 
+
+.step.tail::after {
+    display: none;
+}
+
 .step-status {
     display: inline-flex;
     align-items: center;
@@ -423,14 +522,20 @@ body {
     align-items: center;
     gap: 6px;
     min-width: 0;
+    flex: 1 1 auto;
 }
 
 .file-row strong {
     color: var(--text);
     font-family: "Avenir Next LT Pro Light", "Avenir Next", "Avenir", "Segoe UI", system-ui, -apple-system, sans-serif;
     font-weight: 400;
-    text-overflow: ellipsis;
     letter-spacing: 0.01em;
+    display: block;
+    overflow: visible;
+    white-space: normal;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    max-width: 100%;
 }
 
 .file-icon {
@@ -515,10 +620,53 @@ body {
     padding: 18px;
 }
 
+/* Narrow the files modal specifically for better readability */
+#files-modal .modal-card {
+    width: min(72%, 880px);
+    max-width: 880px;
+}
+
+/* Make files modal body scrollable like data-preview */
+#files-modal .modal-card {
+    max-height: 80vh;
+    overflow: hidden;
+}
+
+#files-modal .files-modal-body {
+    overflow: auto;
+    max-height: 60vh;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+}
+
 .modal-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
+}
+
+.modal-header h3 {
+    padding-bottom: 0.5%;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1.35em;
+    font-weight: 700;
+    margin: 0;
+    margin-bottom: 0.5%;
+    border-bottom: 1px solid var(--border);
+}
+
+.modal-header h3 i {
+    width: 1em;
+    height: 1em;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: none;
 }
 
 .modal-header button.ghost {
@@ -556,4 +704,197 @@ body {
         flex-direction: column;
         align-items: flex-start;
     }
+    .grid.two-cols {
+        grid-template-columns: 1fr;
+    }
+    .col-right {
+        display: grid;
+        grid-template-columns: 1fr;
+        height: auto;
+    }
+    .col-right .panel {
+        height: auto;
+    }
+}
+
+
+.file-select-list {
+    display: grid;
+    gap: 12px;
+    max-height: 400px;
+    overflow-y: auto;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+}
+
+
+.file-select-list.cols-2 {
+    grid-template-columns: repeat(2, minmax(280px, 1fr));
+}
+
+.file-select-list.cols-3 {
+    grid-template-columns: repeat(3, minmax(220px, 1fr));
+}
+
+@media (max-width: 900px) {
+    .file-select-list.cols-2,
+    .file-select-list.cols-3 {
+        grid-template-columns: 1fr;
+    }
+}
+
+
+.modal.cols-2 .modal-card {
+    width: fit-content;
+    max-width: calc(100% - 80px);
+    min-width: 640px;
+}
+
+
+.modal.cols-3 .modal-card {
+    max-width: calc(100% - 80px);
+}
+
+.file-select-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 16px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    transition: border-color 0.2s ease;
+}
+
+.file-select-row:hover {
+    border-color: var(--accent);
+}
+
+.file-select-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.file-select-info strong {
+    color: var(--text-strong);
+    font-family: var(--font-sans);
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.select-file-btn {
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.select-file-btn:hover {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: white;
+}
+
+.select-file-btn.ghost {
+    background: transparent;
+    border: 1px solid var(--border);
+}
+
+.select-file-btn.ghost:hover {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+}
+
+
+.new-panel {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 0;
+    overflow: visible;
+    gap: 20px;
+}
+
+
+.new-panel .service-panel {
+    padding: 20px 20px 12px 20px;
+    flex: 1;
+}
+
+
+.new-panel .start-pipeline-panel {
+    margin: auto;
+    display: flex;
+    flex-direction: row;
+    gap: 18px;
+}
+
+
+.new-panel .start-pipeline-panel button {
+    margin-left: auto;
+    margin-right: auto;
+}
+
+
+.col-right {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    height: 100%;
+}
+
+.col-right .panel {
+    height: 100%;
+    margin: 0;
+}
+
+
+#service-panel .row {
+    display: none;
+}
+
+@media (max-width: 900px) {
+    .col-right {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    .new-panel {
+        height: auto;
+    }
+}
+
+/* compact view-all link in upload panel */
+.files-view-more {
+    color: var(--cyan);
+    cursor: pointer;
+    margin-left: 6px;
+}
+.files-view-more:hover {
+    color: var(--cyan-2);
+    cursor: pointer;
+    margin-left: 6px;
+}
+
+.files-modal-body {
+    font-size: 14px;
+    color: var(--text-soft);
+    white-space: normal;
+    word-break: break-word;
+}
+
+/* color just the filename within the files modal */
+.files-modal-body .files-modal-name {
+    color: var(--cyan);
 }

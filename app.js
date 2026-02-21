@@ -12,11 +12,16 @@ const stepsConfig = [
 const storeKey = "mdq_generated_files";
 const storeMetaKey = "mdq_generated_meta";
 const storePipelineKey = "mdq_pipeline_state";
+const storeServicesKey = "mdq_selected_services";
+const storeParsedKey = "mdq_parsed_files";
 
 const state = {
   file: null,
   parsed: null,
   generated: {},
+  selectedFileForDashboard: null,
+  selectedServices: [],
+  tempFiles: {},
 };
 
 const elements = {
@@ -32,29 +37,55 @@ const elements = {
   closeModal: document.getElementById("close-modal"),
   dataPreview: document.getElementById("data-preview"),
   openDashboard: document.getElementById("open-dashboard"),
+  fileSelectModal: document.getElementById("file-select-modal"),
+  closeFileSelectModal: document.getElementById("close-file-select-modal"),
+  fileSelectList: document.getElementById("file-select-list"),
   hfToken: document.getElementById("hf-token"),
   hfModel: document.getElementById("hf-model"),
   saveSettings: document.getElementById("save-settings"),
   resetBtn: document.getElementById("reset-btn"),
   uploadPanel: document.getElementById("upload-panel"),
   pipelinePanel: document.getElementById("pipeline-panel"),
+  servicePanel: document.getElementById("service-panel"),
+  serviceCheckboxes: document.querySelectorAll('.service-item input[type="checkbox"]'),
+  selectAllCheckbox: document.querySelector('.service-item input[value="all"]'),
+  filesModal: document.getElementById("files-modal"),
+  filesModalBody: document.getElementById("files-modal-body"),
+  closeFilesModal: document.getElementById("close-files-modal"),
 };
 
 const init = () => {
+  loadParsedFiles();
   renderSteps();
   renderFiles();
   loadSettings();
   bindEvents();
+  // wire files modal close handlers
+  try {
+    elements.closeFilesModal?.addEventListener('click', closeFilesModalHandler);
+    elements.filesModal?.addEventListener('click', (ev) => {
+      if (ev.target === elements.filesModal) closeFilesModalHandler();
+    });
+  } catch (err) {
+    // ignore
+  }
   initTheme();
   setupThemeToggle();
   loadPipelineState();
+  loadSelectedServices();
+  // Ensure Start button reflects parsed files after a refresh: enable when there
+  // are parsed files available so the user can start or resume manually.
+  try {
+    elements.processBtn.disabled = !(state.parsedFiles && state.parsedFiles.length > 0);
+  } catch (err) {}
+
   highlightPanel("upload");
 };
 
 const bindEvents = () => {
   elements.fileInput.addEventListener("change", (event) => {
-    const file = event.target.files?.[0];
-    if (file) handleFile(file);
+    const files = Array.from(event.target.files || []);
+    if (files.length) handleFiles(files);
   });
 
   elements.dropzone.addEventListener("dragover", (event) => {
@@ -69,12 +100,12 @@ const bindEvents = () => {
   elements.dropzone.addEventListener("drop", (event) => {
     event.preventDefault();
     elements.dropzone.classList.remove("is-dragging");
-    const file = event.dataTransfer.files?.[0];
-    if (file) handleFile(file);
+    const files = Array.from(event.dataTransfer.files || []);
+    if (files.length) handleFiles(files);
   });
 
   elements.processBtn.addEventListener("click", runPipeline);
-  elements.viewData.addEventListener("click", openDataModal);
+  elements.viewData.addEventListener("click", showStandardizedSelectModal);
   elements.closeModal.addEventListener("click", closeDataModal);
   elements.modal.addEventListener("click", (event) => {
     if (event.target === elements.modal) closeDataModal();
@@ -85,8 +116,10 @@ const bindEvents = () => {
     Object.keys(files).forEach((name) => downloadText(name, files[name]));
   });
 
-  elements.openDashboard.addEventListener("click", () => {
-    window.location.href = "dashboard/index.html";
+  elements.openDashboard.addEventListener("click", showFileSelectModal);
+  elements.closeFileSelectModal.addEventListener("click", closeFileSelectModal);
+  elements.fileSelectModal.addEventListener("click", (event) => {
+    if (event.target === elements.fileSelectModal) closeFileSelectModal();
   });
 
   elements.saveSettings.addEventListener("click", () => {
@@ -97,6 +130,40 @@ const bindEvents = () => {
   });
 
   elements.resetBtn.addEventListener("click", resetAll);
+
+
+  try {
+
+    elements.serviceCheckboxes.forEach((checkbox) => {
+      checkbox.addEventListener("change", handleServiceSelection);
+    });
+
+    if (elements.selectAllCheckbox) {
+      elements.selectAllCheckbox.addEventListener("change", handleSelectAll);
+    }
+
+
+    document.querySelectorAll('.service-item').forEach((label) => {
+      const input = label.querySelector('input[type="checkbox"]');
+      if (!input) return;
+      label.addEventListener('click', (ev) => {
+
+        if (ev.target === input) return;
+        ev.preventDefault();
+
+
+        if (input.value === "all") {
+          input.checked = !input.checked;
+          handleSelectAll({ target: input });
+        } else {
+          input.checked = !input.checked;
+          handleServiceSelection();
+        }
+      });
+    });
+  } catch (err) {
+    console.warn("Service elements not found:", err);
+  }
 };
 
 const initTheme = () => {
@@ -117,26 +184,155 @@ const setupThemeToggle = () => {
   });
 };
 
-const handleFile = async (file) => {
-  const text = await file.text();
-  const parsed = parseCsv(text);
-  if (!parsed.headers.length) {
-    elements.fileInfo.textContent = "Invalid CSV. Please upload a valid file.";
-    elements.openDashboard.classList.add("is-hidden");
-    elements.openDashboard.disabled = true;
-    highlightPanel("upload");
-    return;
+const handleFiles = async (files) => {
+
+  state.files = (state.files || []).concat(Array.from(files || []));
+  state.parsedFiles = state.parsedFiles || [];
+
+  const addedInfo = [];
+  for (const file of Array.from(files || [])) {
+
+    if (state.parsedFiles.some((p) => p.file.name === file.name)) {
+      addedInfo.push(`${file.name}: already uploaded`);
+      continue;
+    }
+
+    const text = await file.text();
+    const parsed = parseCsv(text);
+    if (!parsed.headers.length) {
+      addedInfo.push(`${file.name}: Invalid CSV`);
+      continue;
+    }
+    state.parsedFiles.push({ file, parsed, rawText: text });
+    saveParsedFiles();
+    addedInfo.push(`${file.name} (${parsed.rows.length} rows, ${parsed.headers.length} columns)`);
   }
-  state.file = file;
-  state.parsed = parsed;
-  elements.fileInfo.textContent = `${file.name} • ${parsed.rows.length} rows • ${parsed.headers.length} columns`;
-  elements.processBtn.disabled = false;
+
+
+  const summary = state.parsedFiles.map((p) => `${p.file.name} (${p.parsed.rows.length} rows, ${p.parsed.headers.length} columns)`);
+  elements.fileInfo.textContent = summary.join(" \u2022 ");
+
+  elements.processBtn.disabled = state.parsedFiles.length === 0;
   elements.viewData.disabled = true;
   elements.openDashboard.classList.add("is-hidden");
   elements.openDashboard.disabled = true;
   elements.resetBtn.classList.remove("is-hidden");
-  highlightPanel("none");
+
+  highlightPanel("service");
   resetSteps();
+  // render compact uploaded summary (and bind view-all toggle)
+  renderUploadedSummary();
+  updateFileInputTooltip();
+};
+
+const saveParsedFiles = () => {
+  try {
+    const toSave = (state.parsedFiles || []).map((p) => ({ name: p.file.name, text: p.rawText || "" }));
+    localStorage.setItem(storeParsedKey, JSON.stringify(toSave));
+  } catch (err) {
+    // ignore
+  }
+};
+
+const loadParsedFiles = () => {
+  try {
+    const raw = JSON.parse(localStorage.getItem(storeParsedKey) || "[]");
+    if (!raw || !raw.length) return;
+    state.parsedFiles = state.parsedFiles || [];
+    for (const entry of raw) {
+      try {
+        const parsed = parseCsv(entry.text || "");
+        state.parsedFiles.push({ file: { name: entry.name }, parsed, rawText: entry.text || "" });
+      } catch (err) {
+        // ignore parse errors
+      }
+    }
+    // update UI to reflect loaded parsed files
+    if (state.parsedFiles && state.parsedFiles.length) {
+      const summary = state.parsedFiles.map((p) => `${p.file.name} (${p.parsed.rows.length} rows, ${p.parsed.headers.length} columns)`);
+      elements.fileInfo.textContent = summary.join(" \u2022 ");
+      elements.processBtn.disabled = state.parsedFiles.length === 0;
+      elements.viewData.disabled = true;
+      elements.openDashboard.classList.add("is-hidden");
+      elements.openDashboard.disabled = true;
+      elements.resetBtn.classList.remove("is-hidden");
+      renderUploadedSummary();
+      updateFileInputTooltip();
+    }
+  } catch (err) {
+    // ignore
+  }
+};
+
+// Update the native file-input tooltip to show only the last 4 filenames with an ellipsis at top
+const updateFileInputTooltip = () => {
+  try {
+    if (!elements.fileInput) return;
+    const parsed = state.parsedFiles || [];
+    if (!parsed.length) {
+      elements.fileInput.removeAttribute('title');
+      return;
+    }
+    const last = parsed.slice(-4).map((p) => p.file.name);
+    const title = ['...'].concat(last).join('\n');
+    elements.fileInput.title = title;
+  } catch (err) {
+    // ignore
+  }
+};
+
+// Render a compact summary in the upload panel. If more than 2 files uploaded,
+// show the two most recent and a '..view all' toggle that opens a modal.
+const renderUploadedSummary = () => {
+  if (!state.parsedFiles || state.parsedFiles.length === 0) {
+    elements.fileInfo.textContent = "No file selected.";
+    return;
+  }
+
+  const entries = state.parsedFiles.map((p) => `${p.file.name} (${p.parsed.rows.length} rows, ${p.parsed.headers.length} columns)`);
+
+  if (entries.length <= 2) {
+    elements.fileInfo.textContent = entries.join(' \u2022 ');
+    return;
+  }
+
+  const lastTwo = entries.slice(-2);
+  const compactHtml = `${lastTwo.join(' \u2022 ')} <span class="files-view-more">..view all</span>`;
+  elements.fileInfo.innerHTML = compactHtml;
+
+  const btn = elements.fileInfo.querySelector('.files-view-more');
+  if (btn) {
+    btn.addEventListener('click', (ev) => {
+      ev.preventDefault();
+      showFilesModal();
+    });
+  }
+};
+
+const showFilesModal = () => {
+  if (!elements.filesModal || !elements.filesModalBody) return;
+  const htmlEntries = state.parsedFiles.map((p) => {
+    const name = escapeHtml(p.file.name);
+    const meta = `${p.parsed.rows.length} rows, ${p.parsed.headers.length} columns`;
+    return `<span class="files-modal-name">${name}</span> (${meta})`;
+  });
+  elements.filesModalBody.innerHTML = htmlEntries.join(' \u2022 ');
+  elements.filesModal.setAttribute('aria-hidden', 'false');
+};
+
+// small HTML escape helper to avoid injection when inserting filenames
+const escapeHtml = (str) => {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+};
+
+const closeFilesModalHandler = () => {
+  if (!elements.filesModal) return;
+  elements.filesModal.setAttribute('aria-hidden', 'true');
 };
 
 const renderSteps = () => {
@@ -199,11 +395,30 @@ const updateVisibleTail = () => {
 const highlightPanel = (target) => {
   elements.uploadPanel?.classList.toggle("focus-panel", target === "upload");
   elements.pipelinePanel?.classList.toggle("focus-panel", target === "pipeline");
+
+  elements.servicePanel?.classList.toggle("focus-panel", target === "service");
+
+  if (target === "none") {
+    elements.uploadPanel?.classList.remove("focus-panel");
+    elements.pipelinePanel?.classList.remove("focus-panel");
+    elements.servicePanel?.classList.remove("focus-panel");
+  }
 };
 
 const renderFiles = () => {
   const files = loadGeneratedFiles();
-  const rows = Object.keys(files)
+  const allowedFiles = getAllowedFiles();
+
+
+  const filteredFiles = {};
+  Object.keys(files).forEach((key) => {
+    const matches = allowedFiles.length === 0 || allowedFiles.some((af) => key.endsWith(`_${af}`));
+    if (matches) {
+      filteredFiles[key] = files[key];
+    }
+  });
+
+  const rows = Object.keys(filteredFiles)
     .sort()
     .map(
       (name) => `
@@ -214,7 +429,7 @@ const renderFiles = () => {
               <div>
                 <strong>${name}</strong>
               </div>
-              <div class="hint"><strong>${formatBytes(getTextSize(files[name]))}</strong> ${files[name].length.toLocaleString()} chars</div>
+              <div class="hint"><strong>${formatBytes(getTextSize(filteredFiles[name]))}</strong> ${filteredFiles[name].length.toLocaleString()} chars</div>
             </div>
           </div>
           <button class="ghost" type="button" data-download="${name}" aria-label="Download ${name}">
@@ -227,34 +442,32 @@ const renderFiles = () => {
 
   elements.files.innerHTML = rows || "<div class=\"hint\">No generated files yet.</div>";
   elements.files.querySelectorAll("button[data-download]").forEach((btn) => {
-    btn.addEventListener("click", () => downloadText(btn.dataset.download, files[btn.dataset.download]));
+    btn.addEventListener("click", () => downloadText(btn.dataset.download, filteredFiles[btn.dataset.download]));
   });
 
   if (window.lucide && typeof window.lucide.createIcons === "function") {
     window.lucide.createIcons();
   }
 
-  elements.downloadAll.disabled = !rows;
-  // Enable View Standardized Data button only if standardized_data.txt exists
-  const filesObj = loadGeneratedFiles();
-  if (filesObj["standardized_data.txt"]) {
-    elements.viewData.disabled = false;
-  } else {
-    elements.viewData.disabled = true;
-  }
-  // Only show Open Dashboard if pipeline state has dashboard step with 'Ready to open dashboard'
-  const pipelineState = JSON.parse(localStorage.getItem(storePipelineKey)) || [];
-  const dashboardStep = pipelineState.find(
-    (step) => step.id === "dashboard" && step.message === "Ready to open dashboard"
-  );
-  if (dashboardStep) {
+  elements.downloadAll.disabled = Object.keys(filteredFiles).length === 0;
+
+
+  const hasStandardizedData = Object.keys(filteredFiles).some((name) => name.includes("standardized_data.txt"));
+  elements.viewData.disabled = !hasStandardizedData;
+
+
+  // Only enable/Open dashboard if there is at least one dataset that has
+  // both standardized data and a dashboard config generated.
+  const readyForDashboard = getBasesWithSuffixes(["standardized_data.txt", "dashboard_config.json"]);
+  if (readyForDashboard.length > 0) {
     elements.openDashboard.classList.remove("is-hidden");
     elements.openDashboard.disabled = false;
   } else {
     elements.openDashboard.classList.add("is-hidden");
     elements.openDashboard.disabled = true;
   }
-  if (rows) {
+
+  if (Object.keys(filteredFiles).length > 0) {
     elements.resetBtn.classList.remove("is-hidden");
   }
 };
@@ -286,6 +499,7 @@ const resetAll = () => {
   localStorage.removeItem(storeKey);
   localStorage.removeItem(storeMetaKey);
   localStorage.removeItem(storePipelineKey);
+  localStorage.removeItem(storeParsedKey);
   state.file = null;
   state.parsed = null;
   elements.fileInput.value = "";
@@ -295,6 +509,7 @@ const resetAll = () => {
   elements.openDashboard.disabled = true;
   elements.openDashboard.classList.add("is-hidden");
   elements.resetBtn.classList.add("is-hidden");
+  if (elements.fileInput) elements.fileInput.removeAttribute('title');
   renderFiles();
   resetSteps();
   highlightPanel("upload");
@@ -313,6 +528,132 @@ const savePipelineState = () => {
   localStorage.setItem(storePipelineKey, JSON.stringify(steps));
 };
 
+
+const handleServiceSelection = () => {
+  const selected = [];
+  elements.serviceCheckboxes.forEach((checkbox) => {
+    if (checkbox.checked && checkbox.value !== "all") selected.push(checkbox.value);
+  });
+  const serviceOrder = ["quality", "metadata", "standardize", "ai"];
+  state.selectedServices = selected.sort((a, b) => serviceOrder.indexOf(a) - serviceOrder.indexOf(b));
+  localStorage.setItem(storeServicesKey, JSON.stringify(state.selectedServices));
+
+
+  if (elements.selectAllCheckbox) {
+    const allServiceCheckboxes = Array.from(elements.serviceCheckboxes).filter((cb) => cb.value !== "all");
+    const allChecked = allServiceCheckboxes.every((cb) => cb.checked);
+    const anyChecked = allServiceCheckboxes.some((cb) => cb.checked);
+    elements.selectAllCheckbox.checked = allChecked;
+    elements.selectAllCheckbox.indeterminate = !allChecked && anyChecked;
+  }
+
+  renderFiles();
+};
+
+const handleSelectAll = (event) => {
+  const isChecked = event.target.checked;
+  elements.serviceCheckboxes.forEach((checkbox) => {
+    if (checkbox.value !== "all") checkbox.checked = isChecked;
+  });
+  handleServiceSelection();
+};
+
+const loadSelectedServices = () => {
+  try {
+    const saved = JSON.parse(localStorage.getItem(storeServicesKey)) || [];
+    state.selectedServices = saved;
+    elements.serviceCheckboxes.forEach((checkbox) => {
+      if (checkbox.value !== "all") checkbox.checked = saved.includes(checkbox.value);
+    });
+    if (elements.selectAllCheckbox) {
+      const allServiceCheckboxes = Array.from(elements.serviceCheckboxes).filter((cb) => cb.value !== "all");
+      const allChecked = allServiceCheckboxes.every((cb) => cb.checked);
+      elements.selectAllCheckbox.checked = allChecked;
+      elements.selectAllCheckbox.indeterminate = !allChecked && allServiceCheckboxes.some((cb) => cb.checked);
+    }
+  } catch (err) {
+    state.selectedServices = [];
+  }
+};
+
+const getLastServiceIndex = () => {
+  const serviceOrder = ["quality", "metadata", "standardize", "ai"];
+  const lastService = state.selectedServices[state.selectedServices.length - 1];
+  return serviceOrder.indexOf(lastService);
+};
+
+const getFilesForService = (service) => {
+  const serviceFiles = {
+    quality: ["quality_info.txt", "quality_metrics.json", "data_quality.txt"],
+    metadata: ["metadata.yaml"],
+    standardize: ["rules.yaml", "standardized_data.txt"],
+    ai: ["ai_insights.md", "dashboard_config.json"],
+  };
+  return serviceFiles[service] || [];
+};
+
+const getAllowedFiles = () => {
+  if (!state.selectedServices || state.selectedServices.length === 0) return [];
+  const allowedFiles = [];
+  state.selectedServices.forEach((service) => {
+    allowedFiles.push(...getFilesForService(service));
+  });
+  if (state.selectedServices.includes("ai")) allowedFiles.push("dashboard_config.json");
+  return allowedFiles;
+};
+
+// Compute the required generated file suffixes for the currently selected services
+const getRequiredSuffixesForSelectedServices = () => {
+  try {
+    const req = [];
+    (state.selectedServices || []).forEach((s) => {
+      const files = getFilesForService(s) || [];
+      req.push(...files);
+    });
+    // Ensure dashboard config is considered part of AI final outputs if AI is selected
+    if (state.selectedServices.includes('ai') && !req.includes('dashboard_config.json')) {
+      req.push('dashboard_config.json');
+    }
+    return Array.from(new Set(req));
+  } catch (err) {
+    return [];
+  }
+};
+
+// Return array of base dataset names that have all provided suffixes generated
+const getBasesWithSuffixes = (suffixes) => {
+  const files = loadGeneratedFiles();
+  const map = {};
+  Object.keys(files).forEach((k) => {
+    suffixes.forEach((suf) => {
+      const sufKey = `_${suf}`;
+      if (k.endsWith(sufKey)) {
+        const base = k.slice(0, -sufKey.length);
+        map[base] = map[base] || new Set();
+        map[base].add(suf);
+      }
+    });
+  });
+  return Object.keys(map).filter((b) => suffixes.every((suf) => map[b].has(suf)));
+};
+
+const cleanupTempFiles = (currentFile) => {
+  const files = loadGeneratedFiles();
+  const allowedFiles = getAllowedFiles();
+
+  Object.keys(files).forEach((key) => {
+    const baseCurrent = currentFile.replace(/\.[^/.]+$/, "");
+
+    if (!key.startsWith(`${baseCurrent}_`)) return;
+    const basename = key.replace(`${baseCurrent}_`, "");
+    const keep = allowedFiles.some((af) => basename.includes(af));
+    if (!keep) delete files[key];
+  });
+
+  saveGeneratedFiles(files);
+  renderFiles();
+};
+
 const loadPipelineState = () => {
   try {
     const stored = JSON.parse(localStorage.getItem(storePipelineKey)) || [];
@@ -321,11 +662,18 @@ const loadPipelineState = () => {
       const el = document.getElementById(`step-${step.id}`);
       if (!el) return;
       el.className = "step";
+      // Do not restore any transient "processing" classes after a refresh.
+      // Convert processing -> inactive so the UI doesn't show a perpetual spinner.
       step.classes.forEach((cls) => {
-        if (cls !== "step") el.classList.add(cls);
+        if (cls === "step" || cls === "processing") return;
+        el.classList.add(cls);
       });
       const em = el.querySelector("em");
-      if (em) em.textContent = step.message || "Pending";
+      if (em) {
+        // If the stored state showed a processing message, reset to Pending to avoid confusion.
+        const msg = (step.classes || []).includes("processing") ? "Pending" : step.message || "Pending";
+        em.textContent = msg;
+      }
     });
     updateVisibleTail();
   } catch (err) {
@@ -360,13 +708,159 @@ const downloadText = (name, content) => {
 
 const openDataModal = () => {
   const files = loadGeneratedFiles();
-  const text = files["standardized_data.txt"] || "";
+
+  const standardizedFile = Object.keys(files).find((name) => name.includes('standardized_data.txt'));
+  const text = standardizedFile ? files[standardizedFile] : "";
   elements.dataPreview.innerHTML = buildTablePreview(text);
   elements.modal.setAttribute("aria-hidden", "false");
 };
 
 const closeDataModal = () => {
   elements.modal.setAttribute("aria-hidden", "true");
+};
+
+
+const showFileSelectModal = () => {
+  // Only show datasets that are ready for dashboard (have standardized data + dashboard config)
+  const readyBases = getBasesWithSuffixes(["standardized_data.txt", "dashboard_config.json"]);
+  if (!readyBases.length) {
+    alert("No dashboard-ready datasets found. Please run the pipeline to completion for at least one dataset.");
+    return;
+  }
+
+  // If there are parsed files in the session, prefer showing their base names filtered to ready ones
+  let fileNames = [];
+  if (state.parsedFiles && state.parsedFiles.length) {
+    fileNames = state.parsedFiles.map((f) => f.file.name.replace(/\.[^/.]+$/, ""));
+    fileNames = fileNames.filter((b) => readyBases.includes(b));
+  } else {
+    fileNames = readyBases.slice();
+  }
+
+  if (!fileNames.length) {
+    alert("No dashboard-ready datasets found in the current selection.");
+    return;
+  }
+
+  elements.fileSelectList.dataset.mode = "";
+  delete elements.fileSelectList.dataset.keys;
+  setFileSelectModalSubtitle("Choose which file to view in dashboard");
+  renderFileSelectList(fileNames);
+
+  elements.fileSelectModal.setAttribute("aria-hidden", "false");
+};
+
+const closeFileSelectModal = () => {
+  elements.fileSelectModal.setAttribute("aria-hidden", "true");
+};
+
+// Update subtitle text in the file-select modal header
+const setFileSelectModalSubtitle = (text) => {
+  try {
+    const el = document.querySelector('#file-select-modal .modal-header .panel-meta');
+    if (el) el.textContent = text;
+  } catch (err) {
+    // ignore
+  }
+};
+
+const renderFileSelectList = (fileNames) => {
+
+  elements.fileSelectList.classList.remove("cols-2", "cols-3");
+  elements.fileSelectModal.classList.remove("cols-2", "cols-3");
+  const count = (fileNames || []).length;
+  // Use two columns for up to 8 datasets, switch to three columns from 9+
+  if (count <= 8) {
+    elements.fileSelectList.classList.add("cols-2");
+    elements.fileSelectModal.classList.add("cols-2");
+  } else {
+    elements.fileSelectList.classList.add("cols-3");
+    elements.fileSelectModal.classList.add("cols-3");
+  }
+
+  const rows = fileNames
+    .map(
+      (name) => `
+      <div class="file-select-row" data-filename="${name}">
+        <div class="file-select-info">
+          <i data-lucide="file-text" class="file-icon"></i>
+          <strong>${name}</strong>
+        </div>
+        <button class="select-file-btn ghost" type="button">
+          Open
+        </button>
+      </div>
+    `
+    )
+    .join("");
+
+  elements.fileSelectList.innerHTML = rows || "<div class='hint'>No files available.</div>";
+
+  elements.fileSelectList.querySelectorAll(".select-file-btn").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      const row = e.target.closest(".file-select-row");
+      const filename = row.dataset.filename;
+      const mode = elements.fileSelectList.dataset.mode || "";
+      if (mode === "standardized") {
+
+        try {
+          const keys = JSON.parse(elements.fileSelectList.dataset.keys || "[]");
+          const idx = Array.from(elements.fileSelectList.querySelectorAll('.file-select-row')).findIndex(r => r.dataset.filename === filename);
+          const fileKey = keys[idx];
+          if (fileKey) {
+            closeFileSelectModal();
+            openDataModalForKey(fileKey);
+            return;
+          }
+        } catch (err) {
+
+        }
+      }
+      openDashboardForFile(filename);
+    });
+  });
+
+  if (window.lucide && typeof window.lucide.createIcons === "function") {
+    window.lucide.createIcons();
+  }
+};
+
+
+const showStandardizedSelectModal = () => {
+  const files = loadGeneratedFiles();
+  const entries = Object.keys(files).filter((k) => k.includes("standardized_data.txt"));
+  if (!entries.length) {
+    alert("No standardized data found. Run the pipeline first.");
+    return;
+  }
+
+  const fileNames = entries.map((key) => key.replace(/_standardized_data\.txt$/, ""));
+  setFileSelectModalSubtitle("Choose which standardized dataset to preview");
+  renderFileSelectList(fileNames);
+
+  elements.fileSelectList.dataset.mode = "standardized";
+  elements.fileSelectList.dataset.keys = JSON.stringify(entries);
+  elements.fileSelectModal.setAttribute("aria-hidden", "false");
+};
+
+const openDataModalForKey = (fileKey) => {
+  const files = loadGeneratedFiles();
+  const text = files[fileKey] || "";
+  elements.dataPreview.innerHTML = buildTablePreview(text);
+  elements.modal.setAttribute("aria-hidden", "false");
+};
+
+const openDashboardForFile = (filename) => {
+  // use localStorage so the selection is available to the new tab
+  try {
+    localStorage.setItem("mdq_selected_dashboard_file", filename);
+  } catch (err) {
+    // fallback to sessionStorage if localStorage is unavailable
+    sessionStorage.setItem("mdq_selected_dashboard_file", filename);
+  }
+  closeFileSelectModal();
+  // open dashboard in a new tab
+  window.open("dashboard/index.html", "_blank");
 };
 
 const buildTablePreview = (csvText) => {
@@ -387,79 +881,206 @@ const buildTablePreview = (csvText) => {
 };
 
 const runPipeline = async () => {
-  if (!state.parsed) return;
-  const files = {};
-  // Disable Start AI Pipeline button for this file
+  if (!state.parsedFiles || !state.parsedFiles.length) return;
+  if (!state.selectedServices || state.selectedServices.length === 0) {
+    alert("Please select at least one service");
+    return;
+  }
+
   elements.processBtn.disabled = true;
   highlightPanel("pipeline");
-  setStep("loading", "processing", "Loading...");
-  showStep("loading");
-  await wait(800);
-  setStep("loading", "complete", "Dataset loaded");
 
-  setStep("quality", "processing", "Assessing...");
-  showStep("quality");
-  const quality = assessQuality(state.parsed);
-  const qualityInfo = await generateQualityInfo(quality);
-  await wait(600);
-  files["quality_info.txt"] = qualityInfo;
-  files["data_quality.txt"] = quality.insights;
-  files["quality_metrics.json"] = JSON.stringify(quality.metrics, null, 2);
-  saveGeneratedFiles(files);
-  renderFiles();
-  setStep("quality", "complete", "Generated quality info.txt");
 
-  setStep("metadata", "processing", "Generating...");
-  showStep("metadata");
-  const metadataYaml = await generateMetadataYaml(state.parsed, quality, qualityInfo);
-  await wait(600);
-  files["metadata.yaml"] = metadataYaml;
-  saveGeneratedFiles(files);
-  renderFiles();
-  setStep("metadata", "complete", "Generated metadata.yaml");
+  stepsConfig.forEach((step) => {
+    const el = document.getElementById(`step-${step.id}`);
+    if (el) {
+      if (step.id === "loading") {
+        el.classList.remove("hidden");
+      } else {
+        el.classList.add("hidden");
+      }
+    }
+  });
 
-  setStep("rules", "processing", "Generating...");
-  showStep("rules");
-  files["rules.yaml"] = await generateRulesYaml(state.parsed, quality, qualityInfo, metadataYaml);
-  await wait(600);
-  saveGeneratedFiles(files);
-  renderFiles();
-  setStep("rules", "complete", "Generated rules.yaml");
 
-  setStep("engine", "processing", "Preparing...");
-  showStep("engine");
-  await wait(700);
-  setStep("engine", "complete", "Standardization script ready");
+  const serviceOrder = ["quality", "metadata", "standardize", "ai"];
+  const lastServiceIndex = getLastServiceIndex();
 
-  setStep("standardized", "processing", "Standardizing...");
-  showStep("standardized");
-  const standardized = standardizeData(state.parsed, quality);
-  await wait(600);
-  files["standardized_data.txt"] = standardized.csv;
-  saveGeneratedFiles(files);
-  renderFiles();
-  setStep("standardized", "complete", "Generated standardized_data.txt");
 
-  setStep("ai", "processing", "Generating...");
-  showStep("ai");
-  files["ai_insights.md"] = await buildAiInsights(quality.metrics, standardized.sampleRows);
-  files["dashboard_config.json"] = await buildDashboardConfig(state.parsed, quality, standardized.sampleRows);
-  await wait(600);
-  saveGeneratedFiles(files);
-  renderFiles();
-  setStep("ai", "complete", "Prepared AI insights.md");
+  const mapStepToService = (stepId) => {
+    if (stepId === "loading") return "loading";
+    if (stepId === "quality") return "quality";
+    if (stepId === "metadata") return "metadata";
+    if (["rules", "engine", "standardized"].includes(stepId)) return "standardize";
+    if (stepId === "ai") return "ai";
+    if (stepId === "dashboard") return "dashboard";
+    return null;
+  };
 
-  setStep("dashboard", "processing", "Finalizing...");
-  showStep("dashboard");
-  await wait(500);
-  setStep("dashboard", "complete", "Ready to open dashboard");
+
+  stepsConfig.forEach((step) => {
+    const mapped = mapStepToService(step.id);
+    if (mapped === "loading") {
+      showStep(step.id);
+      return;
+    }
+    if (mapped === "dashboard") {
+      if (state.selectedServices.includes("ai")) showStep(step.id);
+      return;
+    }
+    if (!mapped) return;
+    const idx = serviceOrder.indexOf(mapped);
+    if (idx !== -1 && idx <= lastServiceIndex) showStep(step.id);
+  });
+
+  let allFiles = loadGeneratedFiles();
+
+  for (let i = 0; i < state.parsedFiles.length; i++) {
+    const { file, parsed } = state.parsedFiles[i];
+    const baseName = file.name.replace(/\.[^/.]+$/, "");
+    const fileNum = state.parsedFiles.length > 1 ? ` (${i + 1}/${state.parsedFiles.length})` : "";
+
+    // Skip datasets that are already fully generated for the selected services.
+    // This prevents re-running completed work after a refresh or re-start.
+    try {
+      const required = getRequiredSuffixesForSelectedServices();
+      if (required && required.length) {
+        const allPresent = required.every((suf) => Boolean(allFiles[`${baseName}_${suf}`]));
+        if (allPresent) {
+          // already completed for selected services — skip
+          continue;
+        }
+      }
+    } catch (err) {
+      // ignore and proceed
+    }
+
+
+    setStep("loading", "processing", `Loading ${file.name}...`);
+    await wait(400);
+    setStep("loading", "complete", `${file.name} loaded`);
+
+
+    setStep("quality", "processing", `Assessing quality for ${file.name}...`);
+    const quality = assessQuality(parsed);
+    const qualityInfo = await generateQualityInfo(quality);
+    await wait(400);
+    allFiles[`${baseName}_quality_info.txt`] = qualityInfo;
+    allFiles[`${baseName}_data_quality.txt`] = quality.insights;
+    allFiles[`${baseName}_quality_metrics.json`] = JSON.stringify(quality.metrics, null, 2);
+    saveGeneratedFiles(allFiles);
+    renderFiles();
+    setStep("quality", "complete", `Quality assessed for ${file.name}`);
+
+
+    if (lastServiceIndex === 0) {
+      cleanupTempFiles(file.name);
+      if (i < state.parsedFiles.length - 1) setStep("loading", "processing", "Preparing next file...");
+      continue;
+    }
+
+
+    if (state.selectedServices.includes("metadata") || lastServiceIndex >= 1) {
+      setStep("metadata", "processing", `Generating metadata for ${file.name}...`);
+      const metadataYaml = await generateMetadataYaml(parsed, quality, qualityInfo);
+      await wait(400);
+      allFiles[`${baseName}_metadata.yaml`] = metadataYaml;
+      saveGeneratedFiles(allFiles);
+      renderFiles();
+      setStep("metadata", "complete", `Generated metadata for ${file.name}`);
+    }
+
+    if (lastServiceIndex === 1) {
+      cleanupTempFiles(file.name);
+      if (i < state.parsedFiles.length - 1) setStep("loading", "processing", "Preparing next file...");
+      continue;
+    }
+
+
+    if (state.selectedServices.includes("standardize") || lastServiceIndex >= 2) {
+      setStep("rules", "processing", `Generating rules for ${file.name}...`);
+      const rulesYaml = await generateRulesYaml(parsed, quality, qualityInfo, allFiles[`${baseName}_metadata.yaml`] || "");
+      await wait(400);
+      allFiles[`${baseName}_rules.yaml`] = rulesYaml;
+      saveGeneratedFiles(allFiles);
+      renderFiles();
+      setStep("rules", "complete", `Generated rules for ${file.name}`);
+
+      setStep("engine", "processing", `Preparing standardization for ${file.name}...`);
+      await wait(400);
+      setStep("engine", "complete", `Standardization ready for ${file.name}`);
+
+      setStep("standardized", "processing", `Standardizing ${file.name}...`);
+      const { csv, sampleRows } = standardizeData(parsed, quality);
+      await wait(400);
+      allFiles[`${baseName}_standardized_data.txt`] = csv;
+      saveGeneratedFiles(allFiles);
+      renderFiles();
+      setStep("standardized", "complete", `Standardized ${file.name}`);
+    }
+
+    if (lastServiceIndex === 2) {
+      cleanupTempFiles(file.name);
+      if (i < state.parsedFiles.length - 1) setStep("loading", "processing", "Preparing next file...");
+      continue;
+    }
+
+
+    if (state.selectedServices.includes("ai") || lastServiceIndex >= 3) {
+      setStep("ai", "processing", `Generating AI insights${fileNum}...`);
+      const sampleRows = parseCsv(allFiles[`${baseName}_standardized_data.txt`] || "").rows.slice(0, 10);
+      const aiInsights = await buildAiInsights(quality.metrics, sampleRows);
+      await wait(400);
+      allFiles[`${baseName}_ai_insights.md`] = aiInsights;
+
+      const dashboardConfig = await buildDashboardConfig(parsed, quality, sampleRows);
+      allFiles[`${baseName}_dashboard_config.json`] = dashboardConfig;
+
+      saveGeneratedFiles(allFiles);
+      renderFiles();
+      setStep("ai", "complete", `AI insights ready for ${file.name}`);
+    }
+
+
+    if (i < state.parsedFiles.length - 1 && !state.selectedServices.includes("ai")) {
+      cleanupTempFiles(file.name);
+    }
+
+    if (i < state.parsedFiles.length - 1) setStep("loading", "processing", "Preparing next file...");
+  }
+
+
+  if (state.selectedServices.includes("ai")) {
+    setStep("dashboard", "processing", "Finalizing...");
+    await wait(400);
+    setStep("dashboard", "complete", "Ready to open dashboard");
+  } else {
+
+    const lastIdx = getLastServiceIndex();
+    const map = ["quality", "metadata", "standardize", "ai"];
+    const finalStep = map[lastIdx];
+    if (finalStep) setStep(finalStep, "complete", "Process completed");
+
+
+    const dashEl = document.getElementById("step-dashboard");
+    if (dashEl) {
+
+      const title = dashEl.querySelector("span");
+      if (title) title.textContent = "Process completed";
+      showStep("dashboard");
+      setStep("dashboard", "complete", "Files are ready to download");
+    }
+  }
+
   highlightPanel("none");
-
-  saveGeneratedFiles(files);
+  saveGeneratedFiles(allFiles);
   renderFiles();
-  elements.viewData.disabled = false;
-  elements.openDashboard.disabled = false;
-  elements.openDashboard.classList.remove("is-hidden");
+
+  const hasStandardizedData = Object.keys(allFiles).some((name) => name.includes("standardized_data.txt") && state.selectedServices.includes("standardize"));
+  elements.viewData.disabled = !hasStandardizedData;
+  const readyForDashboard = getBasesWithSuffixes(["standardized_data.txt", "dashboard_config.json"]);
+  elements.openDashboard.disabled = readyForDashboard.length === 0;
+  elements.openDashboard.classList.toggle("is-hidden", readyForDashboard.length === 0);
 };
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));

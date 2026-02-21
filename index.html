@@ -21,28 +21,18 @@
           <p class="eyebrow">METADATA driven data quality generator</p>
           <h1>AI-driven Data Quality Framework</h1>
           <p class="subtext">
-            Frontend-only experience for metadata definition, standardization
-            rules, and data quality insights.
+            Frontend-only experience for metadata definition, standardization rules, and data quality insights.
           </p>
         </div>
         <div class="hero-actions">
-          <button
-            class="theme-toggle"
-            id="theme-toggle"
-            type="button"
-            aria-label="Toggle theme"
-          >
-            <span class="theme-icon" data-theme-icon="sun"
-              ><i data-lucide="sun"></i
-            ></span>
-            <span class="theme-icon" data-theme-icon="moon"
-              ><i data-lucide="moon"></i
-            ></span>
+          <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Toggle theme">
+            <span class="theme-icon" data-theme-icon="sun"><i data-lucide="sun"></i></span>
+            <span class="theme-icon" data-theme-icon="moon"><i data-lucide="moon"></i></span>
           </button>
         </div>
       </header>
 
-      <section class="grid">
+      <section class="grid two-cols">
         <div class="panel" id="upload-panel">
           <div class="panel-header">
             <div>
@@ -51,83 +41,79 @@
             </div>
           </div>
           <div id="dropzone" class="dropzone">
-            <input id="file-input" type="file" accept=".csv,text/csv" />
+            <input id="file-input" type="file" accept=".csv,text/csv" multiple />
             <div>
-              <p><strong>Drag & drop</strong> your messy dataset here</p>
-              <span>or click to browse</span>
+              <p><strong>Drag & drop</strong> your messy datasets here</p>
+              <span>or click to browse (multiple files supported)</span>
             </div>
           </div>
           <div class="row">
-            <button id="process-btn" class="primary" type="button" disabled>
-              Start AI Pipeline
-            </button>
-            <button id="view-data" class="ghost" type="button" disabled>
-              View Standardized Data
-            </button>
-            <button
-              id="reset-btn"
-              class="ghost is-hidden reset-btn"
-              type="button"
-            >
-              Reset
-            </button>
+            <button id="view-data" class="ghost" type="button" disabled>View Standardized Data</button>
           </div>
           <div class="hint" id="file-info">No file selected.</div>
         </div>
 
-        <div class="panel">
-          <div class="panel-header">
-            <div>
-              <h2>AI Connection</h2>
-              <span class="panel-meta"
-                >Hugging Face router (local browser memory)</span
-              >
+        <div class="col-right">
+          <div class="new-panel">
+            <div class="panel service-panel" id="service-panel">
+              <div class="panel-header">
+                <div>
+                  <h2>Select Service</h2>
+                  <span class="panel-meta">select service from checkboxes below</span>
+                </div>
+              </div>
+              <div class="services-list">
+                <label class="service-item"><input type="checkbox" value="quality" /> <span>Assess Data Quality</span></label>
+                <label class="service-item"><input type="checkbox" value="metadata" /> <span>Generate Metadata</span></label>
+                <label class="service-item"><input type="checkbox" value="standardize" /> <span>Data Standardization</span></label>
+                <label class="service-item"><input type="checkbox" value="ai" /> <span>AI insights</span></label>
+                <label class="service-item"><input type="checkbox" value="all" /> <span>Generate All</span></label>
+              </div>
+            </div>
+
+            <div class="start-pipeline-panel">
+              <button id="process-btn" class="primary" type="button" disabled>Start AI Pipeline</button>
+              <button id="reset-btn" class="ghost is-hidden reset-btn" type="button">Reset</button>
             </div>
           </div>
-          <div class="form">
-            <label>
-              HF Token
-              <input
-                id="hf-token"
-                type="password"
-                placeholder="Paste your HuggingFace token"
-              />
-            </label>
-            <label>
-              Model ID
-              <input
-                id="hf-model"
-                type="text"
-                placeholder="meta-llama/Meta-Llama-3-8B-Instruct"
-              />
-            </label>
-            <div class="row">
-              <button id="save-settings" class="ghost" type="button">
-                Save Settings
-              </button>
-              <span class="hint">Token stored in local storage only.</span>
+
+          <div class="panel" id="ai-panel">
+            <div class="panel-header">
+              <div>
+                <h2>AI Connection</h2>
+                <span class="panel-meta">Hugging Face router (local browser memory)</span>
+              </div>
+            </div>
+            <div class="form">
+              <label>
+                HF Token
+                <input id="hf-token" type="password" placeholder="Paste your HuggingFace token" />
+              </label>
+              <label>
+                Model ID
+                <input id="hf-model" type="text" placeholder="meta-llama/Meta-Llama-3-8B-Instruct" />
+              </label>
+              <div class="row">
+                <button id="save-settings" class="ghost" type="button">Save Settings</button>
+                <span class="hint">Token stored in local storage only.</span>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
       <section class="grid">
+        <div class="new-panel">
         <div class="panel" id="pipeline-panel">
           <div class="panel-header">
             <div>
               <h2>Pipeline Progress</h2>
               <span class="panel-meta">Live generation status</span>
             </div>
-            <button
-              id="open-dashboard"
-              class="primary is-hidden"
-              type="button"
-              disabled
-            >
-              Open Dashboard
-            </button>
+            <button id="open-dashboard" class="primary is-hidden" type="button" disabled>Open Dashboard</button>
           </div>
           <div class="steps" id="steps"></div>
+        </div>
         </div>
 
         <div class="panel" id="files-panel">
@@ -136,9 +122,7 @@
               <h2>Generated Files</h2>
               <span class="panel-meta">Download once each file is ready</span>
             </div>
-            <button id="download-all" class="ghost" type="button" disabled>
-              Download All Files
-            </button>
+            <button id="download-all" class="ghost" type="button" disabled>Download All Files</button>
           </div>
           <div class="files" id="files"></div>
         </div>
@@ -148,46 +132,52 @@
     <div class="modal" id="data-modal" aria-hidden="true">
       <div class="modal-card">
         <div class="modal-header">
-          <h3
-            style="
-              padding-bottom: 0.5%;
-              display: flex;
-              align-items: center;
-              gap: 8px;
-              font-size: 1.35em;
-              font-weight: 700;
-              margin: 0;
-              margin-bottom: 0.5%;
-              border-bottom: 1px solid var(--border);
-            "
-          >
-            <i
-              data-lucide="database"
-              style="
-                width: 1em;
-                height: 1em;
-                display: inline-flex;
-                align-items: center;
-                justify-content: center;
-                margin: 0;
-                padding: 0;
-                border: none;
-                background: none;
-              "
-            ></i>
+          <h3>
+            <i data-lucide="database"></i>
             Standardized Data Preview
           </h3>
-          <button
-            id="close-modal"
-            class="ghost"
-            type="button"
-            aria-label="Close"
-          >
+          <button id="close-modal" class="ghost" type="button" aria-label="Close">
             <i data-lucide="x"></i>
           </button>
         </div>
         <div class="modal-body">
           <div id="data-preview" class="data-preview"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- File Selection Modal for Dashboard -->
+    <div class="modal" id="file-select-modal" aria-hidden="true">
+      <div class="modal-card">
+        <div class="modal-header">
+          <div>
+            <h3>Select Dataset</h3>
+            <span class="panel-meta">Choose which file to view in dashboard</span>
+          </div>
+          <button class="ghost" type="button" aria-label="Close" id="close-file-select-modal" type="button">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="file-select-list" id="file-select-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Files list modal (view all uploaded files) -->
+    <div class="modal" id="files-modal" aria-hidden="true">
+      <div class="modal-card">
+        <div class="modal-header">
+          <div>
+            <h3>All Uploaded Files</h3>
+            <span class="panel-meta">Full list of uploaded datasets</span>
+          </div>
+          <button class="ghost" type="button" aria-label="Close" id="close-files-modal">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div id="files-modal-body" class="files-modal-body"></div>
         </div>
       </div>
     </div>
